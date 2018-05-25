@@ -4,23 +4,20 @@ require_once __DIR__ . '/../util/helper.php';
 
 class Task implements \JsonSerializable{
 
+  private $__id;
+  private static $__type = [
+    'title'=>[ 'required'=>1, 'datatype'=>'string', 'min_length'=>5, 'max_length'=>100 ]
+  ];
+
   private $title;
   private $description;
   private $createdon;
 
-  private $__type = [
-    'title'=>[ 'required'=>1, 'datatype'=>'string', 'min_length'=>5, 'max_length'=>100 ]
-  ];
+  /**
+   * Any constructor
+   */
+  function construct(){
 
-  function construct1($title){
-
-    $this->title = $title;
-
-  }
-
-  function construct2($title, $description){
-    $this->title = $title;
-    $this->description = $description;
   }
 
   /**
@@ -28,7 +25,7 @@ class Task implements \JsonSerializable{
    */
   public function save(){
 
-    
+
 
   }
 
@@ -39,6 +36,8 @@ class Task implements \JsonSerializable{
     $args = func_get_args();
     $num_of_args = func_num_args();
     if (method_exists($this, $f = 'construct' . $num_of_args))
+      call_user_func_array(array($this, $f), $args);
+    else if (method_exists($this, $f = 'construct'))
       call_user_func_array(array($this, $f), $args);
   }
 
@@ -60,11 +59,7 @@ class Task implements \JsonSerializable{
       $this->$name($value);
     }
     elseif(property_exists($this, $name)){
-      switch($name){
-        case 'title': $this->$name = attr_get($name, [ $name=>$value ], [ 'datatype'=>'' ]); break;
-        case 'description': $this->$name = attr_get($name, [ $name=>$value ], [ 'datatype'=>'' ]); break;
-      }
-      $this->$name = $value;
+      $this->$name = attr_get($name, [ $name=>$value ], isset($this->__type[$name]) ? $this->__type[$name] : []);
     }
   }
 
@@ -73,7 +68,8 @@ class Task implements \JsonSerializable{
    */
   public function jsonSerialize(){
     $json = get_object_vars($this);
-    unset($json['__type']);
+    foreach($json as $key=>$value)
+      if(strpos($key, '__') !== false) unset($json[$key]);
     return $json;
   }
 
@@ -85,12 +81,12 @@ class Task implements \JsonSerializable{
     $json = json_decode($jsonString, true);
     if(!is_array($json)) return null;
 
-    $title = attr_get('title', $json);
-    $description = attr_get('description', $json);
+    $obj = obj_create_by_type($json, Task::$__type);
 
-    $task = new Task;
-    $task->title = $title;
-    $task->description = $description;
+    $class = __CLASS__;
+    $task = new $class;
+    foreach($obj as $key=>$value)
+      $task->$key = $value;
 
     return $task;
 
